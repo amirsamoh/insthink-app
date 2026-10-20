@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>INSTHINK .Coffee</title>
+
+  <!-- ทำให้เปิดแบบเต็มจอเหมือนแอป -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#dde7ee">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="INSTHINK">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+
+  <style>
+    :root {
+      --navy: #1e3b67; --muted: #8b99a5; --top: #dde7ee; --bottom: #f3f5f7;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; height: 100%; overflow: hidden; overscroll-behavior: none;
+      background: var(--top);
+      font-family: -apple-system, BlinkMacSystemFont, "IBM Plex Sans Thai", "Segoe UI", sans-serif;
+    }
+    /* เว้นพื้นที่รอยบาก/แถบสถานะด้านบน และแถบโฮมด้านล่างของ iPhone */
+    .shell {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      padding-top: env(safe-area-inset-top);
+      background: linear-gradient(180deg, var(--top) 0%, var(--bottom) 100%);
+    }
+    .shell::after { content: ''; height: env(safe-area-inset-bottom); background: var(--bottom); flex: none; }
+    iframe { flex: 1; width: 100%; border: 0; display: block; background: transparent; }
+
+    /* หน้าจอโหลด */
+    .splash {
+      position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 22px;
+      background: linear-gradient(180deg, var(--top) 0%, var(--bottom) 100%);
+      transition: opacity .35s ease, visibility .35s;
+    }
+    .splash.hide { opacity: 0; visibility: hidden; }
+    .splash img { width: 180px; height: auto; }
+    .dots { display: flex; gap: 8px; }
+    .dots span { width: 8px; height: 8px; border-radius: 50%; background: var(--navy); opacity: .25; animation: d 1.2s infinite; }
+    .dots span:nth-child(2) { animation-delay: .2s; }
+    .dots span:nth-child(3) { animation-delay: .4s; }
+    @keyframes d { 0%, 80%, 100% { opacity: .25; transform: scale(1); } 40% { opacity: 1; transform: scale(1.25); } }
+    .msg { display: none; text-align: center; color: var(--muted); font-size: 15px; line-height: 1.6; padding: 0 32px; }
+    .msg b { color: var(--navy); }
+    .btn {
+      display: none; border: 0; border-radius: 999px; background: var(--navy); color: #fff;
+      font: inherit; font-size: 16px; padding: 12px 28px; cursor: pointer;
+    }
+    .splash.error .dots { display: none; }
+    .splash.error .msg, .splash.error .btn { display: block; }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <iframe id="app" title="INSTHINK .Coffee" allow="clipboard-write; web-share"></iframe>
+  </div>
+
+  <div class="splash" id="splash">
+    <img src="logo.png" alt="INSTHINK .Coffee">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <div class="msg" id="msg"></div>
+    <button class="btn" id="retry" type="button">ลองใหม่</button>
+  </div>
+
+  <script>
+    // ====== ใส่ลิงก์ Web App จาก Apps Script ตรงนี้ (ลิงก์ที่ลงท้ายด้วย /exec) ======
+    const GAS_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
+    // ==========================================================================
+
+    const app = document.getElementById('app');
+    const splash = document.getElementById('splash');
+    const msg = document.getElementById('msg');
+    let slowTimer;
+
+    function showError(html) {
+      clearTimeout(slowTimer);
+      msg.innerHTML = html;
+      splash.classList.add('error');
+      splash.classList.remove('hide');
+    }
+
+    function load() {
+      splash.classList.remove('error', 'hide');
+      if (!/^https:\/\/script\.google\.com\/.+\/exec/.test(GAS_URL)) {
+        showError('ยังไม่ได้ตั้งค่าลิงก์แอป<br>แก้ค่า <b>GAS_URL</b> ในไฟล์ index.html');
+        return;
+      }
+      if (!navigator.onLine) {
+        showError('<b>ไม่มีอินเทอร์เน็ต</b><br>เชื่อมต่อ Wi-Fi หรือเน็ตมือถือ แล้วกดลองใหม่');
+        return;
+      }
+      clearTimeout(slowTimer);
+      slowTimer = setTimeout(() => showError('<b>โหลดช้ากว่าปกติ</b><br>ตรวจสอบอินเทอร์เน็ต แล้วกดลองใหม่'), 25000);
+      app.src = GAS_URL + (GAS_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
+    }
+
+    app.addEventListener('load', () => {
+      if (!app.src) return;
+      clearTimeout(slowTimer);
+      // รอให้หน้าแอปวาดเสร็จนิดหนึ่ง กันจอขาวกระพริบ
+      setTimeout(() => splash.classList.add('hide'), 450);
+    });
+    document.getElementById('retry').addEventListener('click', load);
+    window.addEventListener('online', () => { if (splash.classList.contains('error')) load(); });
+
+    load();
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+    }
+  </script>
+</body>
+</html>
