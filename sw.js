@@ -1,6 +1,6 @@
 // Service Worker: เก็บไฟล์หน้าห่อไว้ในเครื่อง เพื่อให้เปิดแอปได้เร็ว
 // เวลาแก้ไฟล์ใน GitHub ให้เปลี่ยนเลขเวอร์ชันนี้ (เช่น v2) เพื่อให้มือถือโหลดไฟล์ใหม่
-const CACHE = 'insthink-shell-v4';
+const CACHE = 'insthink-shell-v5';
 const SHELL = [
   './',
   './index.html',

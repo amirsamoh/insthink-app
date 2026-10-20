@@ -14,6 +14,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+  <!-- เปิดการเชื่อมต่อกับ Google ล่วงหน้า ให้โหลดเร็วขึ้น -->
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://script.googleusercontent.com">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net">
 
   <style>
     :root {
@@ -72,16 +78,27 @@
 
   <script>
     // ====== ใส่ลิงก์ Web App จาก Apps Script ตรงนี้ (ลิงก์ที่ลงท้ายด้วย /exec) ======
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwYbVffsvISx-BAnYF7tTFuD1Ex6Eli4GiM5iinqH9gmXZsfgb4bIHEB2T_qwOB8ydByA/exec';
+    const GAS_URL = 'PASTE_YOUR_WEB_APP_URL_HERE';
     // ==========================================================================
 
     const app = document.getElementById('app');
     const splash = document.getElementById('splash');
     const msg = document.getElementById('msg');
-    let slowTimer;
+    let slowTimer, afterLoadTimer;
+
+    // ปิดหน้าโหลด + บังคับให้ iPhone วาดหน้าแอปใหม่ (กันอาการต้องแตะจอก่อน)
+    function reveal() {
+      clearTimeout(slowTimer); clearTimeout(afterLoadTimer);
+      if (splash.classList.contains('hide') || splash.classList.contains('error')) return;
+      splash.classList.add('hide');
+      setTimeout(() => { if (splash.classList.contains('hide')) splash.style.display = 'none'; }, 400);
+      app.style.transform = 'translateZ(0)';
+      requestAnimationFrame(() => requestAnimationFrame(() => { app.style.transform = ''; }));
+    }
 
     function showError(html) {
-      clearTimeout(slowTimer);
+      clearTimeout(slowTimer); clearTimeout(afterLoadTimer);
+      splash.style.display = '';
       msg.innerHTML = html;
       splash.classList.add('error');
       splash.classList.remove('hide');
@@ -97,16 +114,22 @@
         showError('<b>ไม่มีอินเทอร์เน็ต</b><br>เชื่อมต่อ Wi-Fi หรือเน็ตมือถือ แล้วกดลองใหม่');
         return;
       }
+      splash.style.display = '';
       clearTimeout(slowTimer);
-      slowTimer = setTimeout(() => showError('<b>โหลดช้ากว่าปกติ</b><br>ตรวจสอบอินเทอร์เน็ต แล้วกดลองใหม่'), 25000);
-      app.src = GAS_URL + (GAS_URL.includes('?') ? '&' : '?') + 't=' + Date.now();
+      // สำรอง: ถ้าไม่ได้รับสัญญาณใดๆ ใน 12 วินาที ให้แสดงหน้าแอปเลย (ไม่ต้องรอให้แตะจอ)
+      slowTimer = setTimeout(() => navigator.onLine ? reveal() : showError('<b>ไม่มีอินเทอร์เน็ต</b><br>เชื่อมต่อแล้วกดลองใหม่'), 12000);
+      if (app.src !== GAS_URL) app.src = GAS_URL; else app.contentWindow && app.contentWindow.location.replace(GAS_URL);
     }
 
+    // สัญญาณหลัก: หน้าแอปบอกเองว่า "พร้อมแล้ว"
+    window.addEventListener('message', e => {
+      if (e.data && e.data.type === 'insthink-ready') reveal();
+    });
+    // สัญญาณรอง: iframe โหลดเสร็จ → รออีกนิดให้แอปวาดเสร็จ แล้วแสดง
     app.addEventListener('load', () => {
       if (!app.src) return;
-      clearTimeout(slowTimer);
-      // รอให้หน้าแอปวาดเสร็จนิดหนึ่ง กันจอขาวกระพริบ
-      setTimeout(() => splash.classList.add('hide'), 450);
+      clearTimeout(afterLoadTimer);
+      afterLoadTimer = setTimeout(reveal, 2500);
     });
     document.getElementById('retry').addEventListener('click', load);
     window.addEventListener('online', () => { if (splash.classList.contains('error')) load(); });
