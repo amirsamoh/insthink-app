@@ -76,10 +76,13 @@
     <button class="btn" id="retry" type="button">ลองใหม่</button>
   </div>
 
+  <!-- ลิงก์แอปอยู่ในไฟล์ config.js (แยกไว้ อัปเดตแอปแล้วลิงก์ไม่หาย) -->
+  <script src="config.js"></script>
   <script>
-    // ====== ใส่ลิงก์ Web App จาก Apps Script ตรงนี้ (ลิงก์ที่ลงท้ายด้วย /exec) ======
-    const GAS_URL = 'https://script.google.com/macros/s/AKfycbwYbVffsvISx-BAnYF7tTFuD1Ex6Eli4GiM5iinqH9gmXZsfgb4bIHEB2T_qwOB8ydByA/exec';
-    // ==========================================================================
+    // อ่านลิงก์จาก config.js แล้วทำความสะอาด (ตัดเว้นวรรค/เครื่องหมายคำพูดที่เผลอติดมา)
+    const RAW_URL = String(window.GAS_URL || '');
+    let GAS_URL = RAW_URL.trim().replace(/^['"\s]+|['"\s]+$/g, '');
+    if (/^script\.google\.com\//.test(GAS_URL)) GAS_URL = 'https://' + GAS_URL;   // ลืมใส่ https://
 
     const app = document.getElementById('app');
     const splash = document.getElementById('splash');
@@ -106,8 +109,14 @@
 
     function load() {
       splash.classList.remove('error', 'hide');
-      if (!/^https:\/\/script\.google\.com\/.+\/exec/.test(GAS_URL)) {
-        showError('ยังไม่ได้ตั้งค่าลิงก์แอป<br>แก้ค่า <b>GAS_URL</b> ในไฟล์ index.html');
+      const urlProblem =
+        !GAS_URL || GAS_URL.includes('PASTE_YOUR') ? 'ยังไม่ได้ใส่ลิงก์แอปในไฟล์ <b>config.js</b>' :
+        !/^https:\/\/script\.google\.com\//.test(GAS_URL) ? 'ลิงก์ต้องขึ้นต้นด้วย <b>https://script.google.com/</b>' :
+        /\/dev(\?|$)/.test(GAS_URL) ? 'นี่คือลิงก์ทดสอบ (<b>/dev</b>) ใช้ได้เฉพาะเจ้าของ<br>ให้ใช้ลิงก์ที่ลงท้ายด้วย <b>/exec</b> แทน' :
+        !/\/exec(\?|$)/.test(GAS_URL) ? 'ลิงก์ต้องลงท้ายด้วย <b>/exec</b>' : '';
+      if (urlProblem) {
+        const shown = GAS_URL ? GAS_URL.replace(/[&<>"]/g, '').slice(0, 60) + (GAS_URL.length > 60 ? '…' : '') : '(ว่าง)';
+        showError(urlProblem + '<br><span style="font-size:12px;word-break:break-all;opacity:.8">ค่าที่อ่านได้: ' + shown + '</span>');
         return;
       }
       if (!navigator.onLine) {
